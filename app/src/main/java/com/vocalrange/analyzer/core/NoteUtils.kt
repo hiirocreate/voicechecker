@@ -14,6 +14,9 @@ object NoteUtils {
     private const val A4_MIDI = 69
     private const val A4_FREQUENCY = 440.0
 
+    /** 「ミドルC」= C4 を基準としたオクターブ番号 */
+    private const val MID_REGISTER_OCTAVE = 4
+
     data class NoteInfo(
         val midiNote: Int,
         val noteName: String,
@@ -22,8 +25,8 @@ object NoteUtils {
         val nearestNoteFrequencyHz: Double,
         val centsOffset: Double
     ) {
-        /** "C4" のような表示用ラベル */
-        val label: String get() = "$noteName$octave"
+        /** "ミドルC" のような、日本のボイストレーニング/カラオケ文化で馴染みのある表示用ラベル */
+        val label: String get() = NoteUtils.noteLabel(midiNote)
     }
 
     /** 周波数から小数MIDIノート番号(平均律基準)を計算 */
@@ -73,9 +76,30 @@ object NoteUtils {
         return frequencyToMidi(freqA) - frequencyToMidi(freqB)
     }
 
-    /** よく使う音名の周波数(参照用) */
-    fun noteLabel(midiNoteInt: Int): String {
+    /**
+     * オクターブ番号を「ロー」「ミドル」「ハイ」「ハイハイ」のような、日本の
+     * ボイストレーニング/カラオケ文化で馴染みのある音域プレフィックスに変換する。
+     * C4(ミドルC)を基準に、1オクターブ上がるごとに「ハイ」、下がるごとに「ロー」を重ねる。
+     * 例: octave=3 -> "ロー", octave=5 -> "ハイ", octave=6 -> "ハイハイ"
+     */
+    fun registerPrefix(octave: Int): String {
+        val diff = octave - MID_REGISTER_OCTAVE
+        return when {
+            diff == 0 -> "ミドル"
+            diff > 0 -> "ハイ".repeat(diff)
+            else -> "ロー".repeat(-diff)
+        }
+    }
+
+    /** "C4" のような科学的ピッチ表記(五線譜や理論的な文脈向け) */
+    fun scientificLabel(midiNoteInt: Int): String {
         val (name, octave) = midiToNoteName(midiNoteInt)
         return "$name$octave"
+    }
+
+    /** "ミドルC" のような、音域プレフィックス付きの表示用ラベル(アプリ全体のデフォルト表記) */
+    fun noteLabel(midiNoteInt: Int): String {
+        val (name, octave) = midiToNoteName(midiNoteInt)
+        return "${registerPrefix(octave)}$name"
     }
 }

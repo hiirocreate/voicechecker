@@ -167,7 +167,7 @@ private fun RangeResultContent(summary: RangeSessionSummary) {
 }
 
 @Composable
-private fun SectionCard(title: String, content: @Composable ColumnScopeContent) {
+private fun SectionCard(title: String, content: ColumnScopeContent) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = title, style = MaterialTheme.typography.titleMedium)

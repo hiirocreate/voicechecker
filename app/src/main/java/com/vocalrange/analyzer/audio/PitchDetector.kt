@@ -67,6 +67,11 @@ class PitchDetector(
             return null
         }
 
+        // 3.5 オクターブ下エラーの補正: 倍音の影響で、本来の基音周期(より短いtau)ではなく
+        // その2倍・3倍の周期を誤って選んでしまうことがある(検出音が実際より1オクターブ前後低くなる)。
+        // tauEstimateの約数にも十分深い極小点があれば、より短い周期(=より高い周波数)を優先する。
+        tauEstimate = correctOctaveError(cmnd, tauEstimate, maxTau)
+
         // 4. 放物線補間でtauを精緻化
         val betterTau = parabolicInterpolate(cmnd, tauEstimate)
         if (betterTau <= 0.0) return null
@@ -77,6 +82,23 @@ class PitchDetector(
 
         val confidence = (1.0 - cmnd[tauEstimate]).coerceIn(0.0, 1.0)
         return Result(frequency, confidence)
+    }
+
+    /**
+     * [tauEstimate] の1/2, 1/3 の位置(=2倍・3倍の周波数)にも独立して閾値を満たす極小点があれば、
+     * そちらを基音候補として採用する(オクターブ下エラーの補正)。
+     */
+    private fun correctOctaveError(cmnd: DoubleArray, tauEstimate: Int, maxTau: Int): Int {
+        for (divisor in intArrayOf(2, 3)) {
+            val candidate = tauEstimate / divisor
+            if (candidate < 2 || candidate >= maxTau - 1) continue
+
+            val isLocalMin = cmnd[candidate] <= cmnd[candidate - 1] && cmnd[candidate] <= cmnd[candidate + 1]
+            if (isLocalMin && cmnd[candidate] < threshold) {
+                return candidate
+            }
+        }
+        return tauEstimate
     }
 
     private fun parabolicInterpolate(array: DoubleArray, tauEstimate: Int): Double {

@@ -25,7 +25,7 @@ object NoteUtils {
         val nearestNoteFrequencyHz: Double,
         val centsOffset: Double
     ) {
-        /** "ミドルC" のような、日本のボイストレーニング/カラオケ文化で馴染みのある表示用ラベル */
+        /** "midC" のような、ボイストレーニング/カラオケ文化で馴染みのある表示用ラベル */
         val label: String get() = NoteUtils.noteLabel(midiNote)
     }
 
@@ -77,17 +77,17 @@ object NoteUtils {
     }
 
     /**
-     * オクターブ番号を「ロー」「ミドル」「ハイ」「ハイハイ」のような、日本の
-     * ボイストレーニング/カラオケ文化で馴染みのある音域プレフィックスに変換する。
-     * C4(ミドルC)を基準に、1オクターブ上がるごとに「ハイ」、下がるごとに「ロー」を重ねる。
-     * 例: octave=3 -> "ロー", octave=5 -> "ハイ", octave=6 -> "ハイハイ"
+     * オクターブ番号を "low" / "mid" / "hi" / "hihi" のような、ボイストレーニング/
+     * カラオケ文化で馴染みのある音域プレフィックスに変換する。
+     * C4(mid C)を基準に、1オクターブ上がるごとに "hi"、下がるごとに "low" を重ねる。
+     * 例: octave=3 -> "low", octave=5 -> "hi", octave=6 -> "hihi", octave=2 -> "lowlow"
      */
     fun registerPrefix(octave: Int): String {
         val diff = octave - MID_REGISTER_OCTAVE
         return when {
-            diff == 0 -> "ミドル"
-            diff > 0 -> "ハイ".repeat(diff)
-            else -> "ロー".repeat(-diff)
+            diff == 0 -> "mid"
+            diff > 0 -> "hi".repeat(diff)
+            else -> "low".repeat(-diff)
         }
     }
 
@@ -97,7 +97,7 @@ object NoteUtils {
         return "$name$octave"
     }
 
-    /** "ミドルC" のような、音域プレフィックス付きの表示用ラベル(アプリ全体のデフォルト表記) */
+    /** "midC" / "hiA" / "lowlowE" のような、音域プレフィックス付きの表示用ラベル(アプリ全体のデフォルト表記) */
     fun noteLabel(midiNoteInt: Int): String {
         val (name, octave) = midiToNoteName(midiNoteInt)
         return "${registerPrefix(octave)}$name"

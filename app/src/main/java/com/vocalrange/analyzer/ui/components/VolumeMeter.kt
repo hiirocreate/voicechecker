@@ -1,5 +1,7 @@
 package com.vocalrange.analyzer.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -7,6 +9,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -24,11 +27,18 @@ fun VolumeMeter(
     val minDb = -60.0
     val maxDb = 0.0
     val fraction = ((volumeDb - minDb) / (maxDb - minDb)).toFloat().coerceIn(0f, 1f)
+    // 値自体は ViewModel 側の VolumeSmoother で平滑化済みだが、表示の滑らかさをさらに上げるため
+    // ピクセル単位の遷移もアニメーションで補間する
+    val animatedFraction by animateFloatAsState(
+        targetValue = fraction,
+        animationSpec = tween(durationMillis = 120),
+        label = "volumeMeterFraction"
+    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(text = label, style = MaterialTheme.typography.labelLarge)
         LinearProgressIndicator(
-            progress = { fraction },
+            progress = { animatedFraction },
             modifier = Modifier.fillMaxWidth().height(10.dp)
         )
     }

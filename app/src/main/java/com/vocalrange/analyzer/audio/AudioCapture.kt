@@ -4,6 +4,7 @@ import android.Manifest
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.NoiseSuppressor
 import androidx.annotation.RequiresPermission
 import com.vocalrange.analyzer.core.VolumeUtils
 import kotlinx.coroutines.Dispatchers
@@ -20,11 +21,15 @@ import kotlinx.coroutines.isActive
  * @param sampleRate 録音サンプリングレート
  * @param frameSize  1回の解析に使うウィンドウサイズ(サンプル数)
  * @param hopSize    ウィンドウを何サンプルずつスライドさせるか(小さいほど時間分解能が上がる)
+ * @param enableNoiseSuppression 端末が対応していれば、定常的な背景ノイズ(ファンの音・ヒスノイズなど)を
+ *   軽減する [NoiseSuppressor] を有効にする。自動音量調整(AGC)は声量プロファイルの精度を
+ *   損なうため、意図的に有効化していない。
  */
 class AudioCapture(
     private val sampleRate: Int = 44100,
     private val frameSize: Int = 2048,
-    private val hopSize: Int = 1024
+    private val hopSize: Int = 1024,
+    private val enableNoiseSuppression: Boolean = true
 ) {
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
@@ -50,6 +55,14 @@ class AudioCapture(
         if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
             audioRecord.release()
             error("マイクの初期化に失敗しました")
+        }
+
+        val noiseSuppressor: NoiseSuppressor? = if (enableNoiseSuppression && NoiseSuppressor.isAvailable()) {
+            runCatching {
+                NoiseSuppressor.create(audioRecord.audioSessionId)?.also { it.setEnabled(true) }
+            }.getOrNull()
+        } else {
+            null
         }
 
         // リングバッファ(直近 frameSize サンプルを保持)
@@ -78,6 +91,7 @@ class AudioCapture(
             }
         } finally {
             runCatching { audioRecord.stop() }
+            noiseSuppressor?.let { runCatching { it.release() } }
             audioRecord.release()
         }
     }.flowOn(Dispatchers.IO)

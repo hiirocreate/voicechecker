@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.vocalrange.analyzer.audio.PitchTracker
 import com.vocalrange.analyzer.core.VibratoAnalyzer
 import com.vocalrange.analyzer.core.VibratoSessionSummary
+import com.vocalrange.analyzer.core.VolumeSmoother
 import com.vocalrange.analyzer.data.VoiceRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +34,7 @@ data class VibratoTestUiState(
 class VibratoTestViewModel(private val repository: VoiceRepository) : ViewModel() {
 
     private val pitchTracker = PitchTracker()
+    private val volumeSmoother = VolumeSmoother()
     private var trackingJob: Job? = null
     private val samples = mutableListOf<Pair<Long, Double>>()
     private val noteLabelCounts = mutableMapOf<String, Int>()
@@ -47,6 +49,7 @@ class VibratoTestViewModel(private val repository: VoiceRepository) : ViewModel(
         if (trackingJob?.isActive == true) return
         samples.clear()
         noteLabelCounts.clear()
+        volumeSmoother.reset()
         startTimeMs = System.currentTimeMillis()
         _uiState.value = VibratoTestUiState(isRecording = true)
 
@@ -62,10 +65,11 @@ class VibratoTestViewModel(private val repository: VoiceRepository) : ViewModel(
                         }
                     }
 
+                    val displayVolumeDb = volumeSmoother.next(frame.volumeDb)
                     _uiState.update {
                         it.copy(
                             currentNoteLabel = frame.noteInfo?.label,
-                            currentVolumeDb = frame.volumeDb,
+                            currentVolumeDb = displayVolumeDb,
                             elapsedMs = elapsed
                         )
                     }
@@ -122,6 +126,7 @@ class VibratoTestViewModel(private val repository: VoiceRepository) : ViewModel(
         trackingJob = null
         samples.clear()
         noteLabelCounts.clear()
+        volumeSmoother.reset()
         _uiState.value = VibratoTestUiState()
     }
 

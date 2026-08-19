@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.vocalrange.analyzer.audio.PitchTracker
 import com.vocalrange.analyzer.core.RangeAnalyzer
 import com.vocalrange.analyzer.core.RangeSessionSummary
+import com.vocalrange.analyzer.core.VolumeSmoother
 import com.vocalrange.analyzer.data.VoiceRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,7 @@ class RangeTestViewModel(private val repository: VoiceRepository) : ViewModel() 
 
     private val analyzer = RangeAnalyzer()
     private val pitchTracker = PitchTracker()
+    private val volumeSmoother = VolumeSmoother()
     private var trackingJob: Job? = null
 
     private val _uiState = MutableStateFlow(RangeTestUiState())
@@ -42,16 +44,18 @@ class RangeTestViewModel(private val repository: VoiceRepository) : ViewModel() 
     fun startRecording() {
         if (trackingJob?.isActive == true) return
         analyzer.reset()
+        volumeSmoother.reset()
         _uiState.value = RangeTestUiState(isRecording = true)
 
         trackingJob = viewModelScope.launch {
             try {
                 pitchTracker.track().collect { frame ->
-                    analyzer.addFrame(frame)
+                    analyzer.addFrame(frame) // 解析には生の(平滑化前の)音量値を使う
+                    val displayVolumeDb = volumeSmoother.next(frame.volumeDb)
                     _uiState.update { current ->
                         current.copy(
                             currentNoteLabel = frame.noteInfo?.label,
-                            currentVolumeDb = frame.volumeDb,
+                            currentVolumeDb = displayVolumeDb,
                             isVoiced = frame.isVoiced,
                             lowestLabel = analyzer.currentLowestLabel() ?: current.lowestLabel,
                             highestLabel = analyzer.currentHighestLabel() ?: current.highestLabel,
@@ -94,6 +98,7 @@ class RangeTestViewModel(private val repository: VoiceRepository) : ViewModel() 
         trackingJob?.cancel()
         trackingJob = null
         analyzer.reset()
+        volumeSmoother.reset()
         _uiState.value = RangeTestUiState()
     }
 
